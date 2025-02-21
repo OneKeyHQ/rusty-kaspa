@@ -14479,33 +14479,36 @@ export class XPub {
 }
 
 async function __wbg_load(module, imports) {
-  if (typeof Response === "function" && module instanceof Response) {
-    if (typeof WebAssembly.instantiateStreaming === "function") {
-      try {
-        return await WebAssembly.instantiateStreaming(module, imports);
-      } catch (e) {
-        if (module.headers.get("Content-Type") != "application/wasm") {
-          console.warn(
-            "`WebAssembly.instantiateStreaming` failed because your server does not serve wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n",
-            e
-          );
-        } else {
-          throw e;
-        }
-      }
-    }
+  const loadWebAssembly = require("./kaspa_bg.wasm.js");
+  const bytes = loadWebAssembly();
+  return await WebAssembly.instantiate(bytes.buffer, imports);
+  // if (typeof Response === "function" && module instanceof Response) {
+  //   if (typeof WebAssembly.instantiateStreaming === "function") {
+  //     try {
+  //       return await WebAssembly.instantiateStreaming(module, imports);
+  //     } catch (e) {
+  //       if (module.headers.get("Content-Type") != "application/wasm") {
+  //         console.warn(
+  //           "`WebAssembly.instantiateStreaming` failed because your server does not serve wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n",
+  //           e
+  //         );
+  //       } else {
+  //         throw e;
+  //       }
+  //     }
+  //   }
 
-    const bytes = await module.arrayBuffer();
-    return await WebAssembly.instantiate(bytes, imports);
-  } else {
-    const instance = await WebAssembly.instantiate(module, imports);
+  //   const bytes = await module.arrayBuffer();
+  //   return await WebAssembly.instantiate(bytes, imports);
+  // } else {
+  //   const instance = await WebAssembly.instantiate(module, imports);
 
-    if (instance instanceof WebAssembly.Instance) {
-      return { instance, module };
-    } else {
-      return instance;
-    }
-  }
+  //   if (instance instanceof WebAssembly.Instance) {
+  //     return { instance, module };
+  //   } else {
+  //     return instance;
+  //   }
+  // }
 }
 
 function __wbg_get_imports() {
@@ -16005,12 +16008,12 @@ async function __wbg_init(module_or_path) {
     (typeof Request === "function" && module_or_path instanceof Request) ||
     (typeof URL === "function" && module_or_path instanceof URL)
   ) {
-    module_or_path = fetch(module_or_path);
+    // module_or_path = fetch(module_or_path);
   }
 
   __wbg_init_memory(imports);
 
-  const { instance, module } = await __wbg_load(await module_or_path, imports);
+  const { instance, module } = await __wbg_load(undefined, imports);
 
   return __wbg_finalize_init(instance, module);
 }
