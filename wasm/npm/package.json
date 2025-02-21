@@ -14,7 +14,8 @@
     "kaspa_bg.wasm.d.ts",
     "kaspa_bg.wasm.bin",
     "kaspa.js",
-    "kaspa.d.ts"
+    "kaspa.d.ts",
+    "kaspa_bg.wasm.js"
   ],
   "module": "kaspa.js",
   "types": "kaspa.d.ts",
