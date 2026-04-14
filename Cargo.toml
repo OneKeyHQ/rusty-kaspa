@@ -215,7 +215,7 @@ paste = "1.0.14"
 pbkdf2 = "0.12.2"
 portable-atomic = { version = "1.5.1", features = ["float"] }
 prost = "0.13.2"
-rand = "0.8.5"
+rand = "0.9.3"
 rand_chacha = "0.3.1"
 rand_core = { version = "0.6.4", features = ["std"] }
 rand_distr = "0.4.3"
