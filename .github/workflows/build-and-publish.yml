@@ -1,0 +1,80 @@
+name: build-and-publish-npm
+
+# Builds the kaspa wasm from source (this branch's checked-out kaspa release)
+# and publishes @onekeyfe/kaspa-wasm + @onekeyfe/kaspa-wasm-node to npm.
+# Run from the chore/wasm-<tag>-onekey branch (based on a kaspa release tag).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "npm version to publish (e.g. 1.0.3-alpha.1)"
+        required: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # secp256k1-sys compiles C to wasm32; install clang-15 (has wasm backend)
+      # and make it the default cc/clang so onekey-pack.sh needs no CC override.
+      - name: Install llvm (clang-15)
+        run: |
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+          sudo apt-get install -y clang-15 lld-15 llvm-15-dev libclang-common-15-dev libclang-15-dev
+          sudo update-alternatives --install /usr/bin/clang clang /usr/lib/llvm-15/bin/clang 100
+          sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/lib/llvm-15/bin/clang++ 100
+          sudo update-alternatives --install /usr/bin/cc cc /usr/lib/llvm-15/bin/clang 0
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/lib/llvm-15/bin/clang++ 0
+
+      - name: Install gcc-multilib
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-multilib
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Add wasm32 target
+        run: rustup target add wasm32-unknown-unknown
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Cache cargo + target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build + repackage wasm (web + node)
+        run: bash wasm/onekey-pack.sh "${{ github.event.inputs.version }}"
+
+      - name: Publish @onekeyfe/kaspa-wasm
+        working-directory: ./wasm/npm
+        run: npm publish --no-verify-access --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish @onekeyfe/kaspa-wasm-node
+        working-directory: ./wasm/npm-node
+        run: npm publish --no-verify-access --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
